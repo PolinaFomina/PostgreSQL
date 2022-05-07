@@ -1,0 +1,70 @@
+--1
+--Вывести статистику цен: количество медикаментов в разных ценовых диапозонах
+CREATE FUNCTION get_statistic_of_prices () 
+RETURNS TABLE(count1 integer, count2 integer, count3 integer, count4 integer) AS $$
+
+DECLARE 
+	count1 integer = 0;
+	count2 integer = 0;
+	count3 integer = 0;
+	count4 integer = 0;
+	str record;
+
+BEGIN
+	FOR str IN SELECT * FROM medicaments
+	LOOP
+		CASE
+    		WHEN str.price BETWEEN 0 AND 300 THEN
+        		count1 = count1 + 1;
+    		WHEN str.price BETWEEN 301 AND 500 THEN
+        		count2 = count2 + 1;
+			WHEN str.price BETWEEN 501 AND 1000 THEN
+        		count3 = count3 + 1;
+			WHEN str.price > 1000 THEN
+        		count4 = count4 + 1;
+		END CASE;
+	END LOOP;
+	
+	RETURN QUERY SELECT count1, count2, count3, count4;
+END;
+
+$$ LANGUAGE plpgsql;
+
+
+SELECT count1 AS "(0;300]", count2 AS "(300;500]", 
+		count3 AS "(500;1000]", count4 AS "(1000;+∞)" FROM get_statistic_of_prices();
+
+					
+--2
+--Увеличить в 2 раза цену всех медикаментов, имеющих указанную форму выпуска
+CREATE FUNCTION double_prices (dosage_form_ text) RETURNS void AS $$
+					
+DECLARE 
+	id_medicament_ integer;
+	curs CURSOR FOR SELECT * from medicaments
+						JOIN dosage_forms ON medicaments.dosage_form = dosage_forms.id_dosage_form
+							WHERE dosage_forms.name = dosage_form_;
+					
+BEGIN
+					
+	IF NOT EXISTS (SELECT * FROM dosage_forms
+						WHERE dosage_forms.name = dosage_form_)
+	THEN
+		RAISE EXCEPTION 'Такой формы выпуска не существует!';
+	END IF;
+					
+	OPEN curs;
+	FETCH curs INTO id_medicament_;
+	WHILE (FOUND) LOOP
+   		UPDATE medicaments 
+			SET price = 2 * price 
+				WHERE id_medicament = id_medicament_;
+   		FETCH curs INTO id_medicament_;
+	END LOOP;				
+	CLOSE curs;
+END;
+				
+$$ LANGUAGE plpgsql;
+
+					
+SELECT double_prices ('Таблетки');

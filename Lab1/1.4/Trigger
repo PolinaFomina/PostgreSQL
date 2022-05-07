@@ -1,0 +1,21 @@
+CREATE FUNCTION check_quantity_medicament_in_order() RETURNS TRIGGER AS $$
+	BEGIN
+		IF NEW.quantity > 100 THEN
+            RAISE EXCEPTION 'Нельзя закупить более 100 упаковок лекарства за раз!';
+			ROLLBACK;
+        END IF;
+	END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER check_quantity_medicament
+	AFTER INSERT ON orders_medicaments
+	FOR EACH ROW EXECUTE FUNCTION check_quantity_medicament_in_order();
+	
+	
+INSERT INTO orders_medicaments (id_order, id_medicament, quantity) VALUES
+	(
+		(SELECT MAX(id_order) FROM orders),
+		(SELECT MAX(id_medicament) FROM medicaments),
+		105
+	)

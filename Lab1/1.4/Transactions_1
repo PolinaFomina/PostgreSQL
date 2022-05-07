@@ -1,0 +1,133 @@
+--READ UNCOMMITTED
+
+--потерянные изменения
+
+SELECT price FROM medicaments
+	WHERE id_medicament = 14;
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+BEGIN;
+
+UPDATE medicaments
+	SET price = price + 100
+		WHERE id_medicament = 14;
+		
+COMMIT;
+
+SELECT price FROM medicaments
+	WHERE id_medicament = 14;
+
+--грязное чтение
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+BEGIN;
+
+SELECT price FROM medicaments
+	WHERE id_medicament = 14;
+	
+SELECT price FROM medicaments
+	WHERE id_medicament = 14;
+	
+SELECT price FROM medicaments
+	WHERE id_medicament = 14;
+	
+COMMIT;
+
+
+--READ COMMITTED
+
+--грязное чтение
+
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+BEGIN;
+
+SELECT price FROM medicaments
+	WHERE id_medicament = 14;
+	
+SELECT price FROM medicaments
+	WHERE id_medicament = 14;
+
+SELECT price FROM medicaments
+	WHERE id_medicament = 14;
+	
+COMMIT;
+
+--неповторяемое чтение
+
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+BEGIN;
+
+SELECT price FROM medicaments
+	WHERE id_medicament = 14;
+	
+SELECT price FROM medicaments
+	WHERE id_medicament = 14;
+	
+COMMIT;
+
+
+--REPEATABLE READ
+
+--неповторяемое чтение
+
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+BEGIN;
+
+SELECT price FROM medicaments
+	WHERE id_medicament = 14;
+	
+SELECT price FROM medicaments
+	WHERE id_medicament = 14;
+	
+COMMIT;
+
+--фантомное чтение
+
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+BEGIN;
+
+SELECT COUNT(id_order) AS count FROM orders
+	JOIN customers ON orders.customer = customers.id_customer
+		WHERE name = 'Аптека Шексна';
+	
+SELECT COUNT(id_order) AS count FROM orders
+	JOIN customers ON orders.customer = customers.id_customer
+		WHERE name = 'Аптека Шексна';
+	
+COMMIT;
+
+
+--SERIALIZABLE
+
+--фантомное чтение
+
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+BEGIN;
+
+SELECT COUNT(id_order) AS count FROM orders
+	JOIN customers ON orders.customer = customers.id_customer
+		WHERE name = 'Аптека Шексна';
+	
+SELECT COUNT(id_order) AS count FROM orders
+	JOIN customers ON orders.customer = customers.id_customer
+		WHERE name = 'Аптека Шексна';
+	
+COMMIT;
+
+
+--READ COMMITTED
+
+--фантомное чтение
+
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+BEGIN;
+
+SELECT COUNT(id_order) AS count FROM orders
+	JOIN customers ON orders.customer = customers.id_customer
+		WHERE name = 'Аптека Шексна';
+	
+SELECT COUNT(id_order) AS count FROM orders
+	JOIN customers ON orders.customer = customers.id_customer
+		WHERE name = 'Аптека Шексна';
+	
+COMMIT;

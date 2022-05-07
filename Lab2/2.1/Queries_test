@@ -1,0 +1,62 @@
+SET ROLE test;
+
+--TABLE "orders"
+
+SELECT * FROM orders;
+
+INSERT INTO orders (date, customer) VALUES
+  	(
+		(SELECT CURRENT_DATE),
+	 	(SELECT id_customer FROM customers
+			WHERE name = 'Аптека Озерки')
+	);
+	
+UPDATE orders
+	SET customer = (SELECT id_customer FROM customers 
+						WHERE name = 'Аптека Алоэ')
+		WHERE id_order = (SELECT MAX(id_order) FROM orders);
+
+
+--TABLE "medicaments"
+
+SELECT * FROM medicaments;
+
+SELECT name FROM medicaments;
+
+INSERT INTO medicaments (name, dosage_form, price) VALUES
+	(
+		'ХИЛО-КОМОД',
+		(SELECT id_dosage_form FROM dosage_forms
+			WHERE name = 'Раствор'),
+		490
+	);
+		
+UPDATE medicaments
+	SET name = 'Омега'
+		WHERE id_medicament = 14;
+		
+UPDATE medicaments
+	SET price = price * 0.8
+		WHERE id_medicament = 14;
+		
+
+--TABLE "customers"
+
+SELECT * FROM customers;
+
+UPDATE customers
+	SET name = 'СБЕРАПТЕКА'
+		WHERE id_customer = 10;
+		
+		
+--VIEW "info_about_customers"
+
+SELECT * FROM info_about_customers;
+
+UPDATE info_about_customers
+	SET name = 'невис'
+		WHERE phone_number = '8(921)141-51-71';
+
+UPDATE info_about_customers
+	SET phone_number = '8(931)141-51-71'
+		WHERE name = 'Невис';

@@ -1,0 +1,42 @@
+CREATE USER test WITH PASSWORD 'test';
+
+GRANT CONNECT
+	ON DATABASE "Labs" TO test;
+	
+GRANT SELECT, INSERT, UPDATE
+	ON TABLE "orders" TO test;
+	
+GRANT SELECT (id_medicament, name, price), UPDATE (price)
+	ON TABLE "medicaments" TO test;
+	
+GRANT SELECT
+	ON TABLE "customers" TO test;
+	
+GRANT SELECT
+	ON "info_about_customers" TO test;
+	
+CREATE ROLE test_views;
+
+GRANT UPDATE (phone_number)
+	ON "info_about_customers" TO test_views;
+
+GRANT test_views TO test;
+
+
+
+REVOKE ALL PRIVILEGES 
+	ON DATABASE "Labs" FROM test;
+
+REVOKE ALL PRIVILEGES 
+	ON TABLE "orders", "medicaments", "customers" FROM test;
+	
+REVOKE ALL PRIVILEGES 
+	ON "info_about_customers" FROM test;
+	
+REVOKE ALL PRIVILEGES 
+	ON "info_about_customers" FROM test_views;
+	
+REVOKE test_views FROM test;
+	
+DROP USER test;
+DROP ROLE test_views;

@@ -1,0 +1,71 @@
+--Запрос к одной таблице без индекса
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, TIMING) SELECT * FROM products
+	WHERE name = 'water' AND price < 20000
+	
+--Запрос к одной таблице с индексом BTREE
+CREATE INDEX IF NOT EXISTS products_name_btree_index ON products USING BTREE (name);
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, TIMING) SELECT * FROM products
+	WHERE name = 'water' AND price < 20000;
+	
+DROP INDEX products_name_btree_index;
+
+--Запрос к одной таблице с индексом BRIN
+CREATE INDEX IF NOT EXISTS products_name_brin_index ON products USING BRIN (name);
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, TIMING) SELECT * FROM products
+	WHERE name = 'water' AND price < 20000;
+	
+DROP INDEX products_name_brin_index;
+
+
+--Запрос к нескольким связанным таблицам
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, TIMING) SELECT * FROM products
+	JOIN brands ON products.brand = brands.id_brand
+		WHERE brands.name = 'Bentley-Johnson' AND products.name = 'water' AND price < 70000
+
+--Запрос к одной таблице с индексом BTREE
+CREATE INDEX IF NOT EXISTS products_name_btree_index ON products USING BTREE (name);
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, TIMING) SELECT * FROM products
+	JOIN brands ON products.brand = brands.id_brand
+		WHERE brands.name = 'Bentley-Johnson' AND products.name = 'water' AND price < 70000
+	
+DROP INDEX products_name_btree_index;
+
+--Запрос к одной таблице с индексом BRIN
+CREATE INDEX IF NOT EXISTS products_name_brin_index ON products USING BRIN (name);
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, TIMING) SELECT * FROM products
+	JOIN brands ON products.brand = brands.id_brand
+		WHERE brands.name = 'Bentley-Johnson' AND products.name = 'water' AND price < 70000
+	
+DROP INDEX products_name_brin_index;
+
+
+--Получение размера таблиц и индексов
+SELECT relname AS "name", pg_size_pretty(pg_relation_size(C.oid)) AS "size" FROM pg_class C
+	LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace)
+		WHERE nspname IN ('public')
+			ORDER BY pg_relation_size(C.oid) DESC;
+
+
+--Полнотекстовый поиск без индекса
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, TIMING) SELECT * FROM points_of_issue 
+	WHERE to_tsvector('english', address) @@ plainto_tsquery('Roads & Ryan');
+
+--Полнотекстовый поиск с индексом GIN
+CREATE INDEX IF NOT EXISTS points_of_issue_address_gin_index ON points_of_issue USING GIN (to_tsvector('english', address));
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, TIMING) SELECT * FROM points_of_issue 
+	WHERE to_tsvector('english', address) @@ to_tsquery('Roads & Ryan');
+	
+DROP INDEX points_of_issue_address_gin_index;
+
+--Полнотекстовый поиск с индексом GiST
+CREATE INDEX IF NOT EXISTS points_of_issue_address_gist_index ON points_of_issue USING GIST (to_tsvector('english', address));
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, TIMING) SELECT * FROM points_of_issue 
+	WHERE to_tsvector('english', address) @@ plainto_tsquery('Roads & Ryan');
+	
+DROP INDEX points_of_issue_address_gist_index;

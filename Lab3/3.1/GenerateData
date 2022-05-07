@@ -1,0 +1,125 @@
+-- CREATE EXTENSION plpython3u;
+
+CREATE OR REPLACE PROCEDURE generate_data() AS $$
+
+	from faker import Faker
+	
+	faker = Faker()
+	
+	for i in range(1000000):
+	
+		name_of_brand = faker.unique.company()			
+		plpy.execute("INSERT INTO brands (name) VALUES (\'{0}\')".format(name_of_brand))
+		
+	for i in range(1000000):
+	
+		name_of_customer = faker.name()
+		phone_number = faker.unique.phone_number()
+		password = faker.password()
+		plpy.execute("INSERT INTO customers (name, phone_number, password) \
+		VALUES (\'{0}\', \'{1}\', \'{2}\')".format(name_of_customer, phone_number, password))
+		
+	for i in range(1000000):
+	
+		address = faker.unique.address()
+		plpy.execute("INSERT INTO points_of_issue (address) VALUES (\'{0}\')".format(address))
+
+	for i in range(10000000):
+
+		name_of_product = faker.word()
+		brand = faker.random_int(1, 1000000)
+		price = faker.random_int(1, 100000)
+		weight = faker.random_int(1, 100000)
+		plpy.execute("INSERT INTO products (name, brand, price, weight) \
+		VALUES (\'{0}\', {1}, {2}, {3})".format(name_of_product, brand, price, weight))
+
+	for i in range(1000000):
+
+		statuses = ["cancelled", "placed", "delivered", "received"]
+		customer = faker.random_int(1, 1000000)
+		date_of_placing = faker.date_between(start_date='-5y', end_date='today')
+		status = statuses[faker.random_int(0, 3)]
+		point_of_issue = faker.random_int(1, 1000000)
+		plpy.execute("INSERT INTO orders (customer, date_of_placing, status, point_of_issue) \
+		VALUES ({0}, \'{1}\', \'{2}\', {3})".format(customer, date_of_placing, status, point_of_issue))
+
+	for i in range(1000000):
+
+		id_order = faker.random_int(1, 1000000)
+		id_product = faker.random_int(1, 10000000)
+		quantity = faker.random_int(1, 1000)
+		plpy.execute("INSERT INTO orders_products (id_order, id_product, quantity) \
+		VALUES ({0}, {1}, {2})".format(id_order, id_product, quantity))
+
+$$ LANGUAGE plpython3u;
+
+
+ALTER TABLE brands DROP CONSTRAINT unique_name;
+ALTER TABLE brands ALTER COLUMN name DROP NOT NULL;
+
+ALTER TABLE products DROP CONSTRAINT positive_price;
+ALTER TABLE products DROP CONSTRAINT positive_weight;
+ALTER TABLE products DROP CONSTRAINT products_brand_fkey;
+ALTER TABLE products ALTER COLUMN name DROP NOT NULL;
+ALTER TABLE products ALTER COLUMN brand DROP NOT NULL;
+ALTER TABLE products ALTER COLUMN price DROP NOT NULL;
+ALTER TABLE products ALTER COLUMN weight DROP NOT NULL;
+
+ALTER TABLE customers DROP CONSTRAINT unique_phone_number;
+ALTER TABLE customers ALTER COLUMN name DROP NOT NULL;
+ALTER TABLE customers ALTER COLUMN phone_number DROP NOT NULL;
+ALTER TABLE customers ALTER COLUMN password DROP NOT NULL;
+
+ALTER TABLE points_of_issue DROP CONSTRAINT unique_address;
+ALTER TABLE points_of_issue ALTER COLUMN address DROP NOT NULL;
+
+ALTER TABLE orders DROP CONSTRAINT orders_customer_fkey;
+ALTER TABLE orders DROP CONSTRAINT orders_point_of_issue_fkey;
+ALTER TABLE orders ALTER COLUMN customer DROP NOT NULL;
+ALTER TABLE orders ALTER COLUMN date_of_placing DROP NOT NULL;
+ALTER TABLE orders ALTER COLUMN status DROP NOT NULL;
+ALTER TABLE orders ALTER COLUMN point_of_issue DROP NOT NULL;
+
+ALTER TABLE orders_products DROP CONSTRAINT orders_products_id_order_fkey;
+ALTER TABLE orders_products DROP CONSTRAINT orders_products_id_product_fkey;
+ALTER TABLE orders_products DROP CONSTRAINT positive_quantity;
+ALTER TABLE orders_products ALTER COLUMN id_order DROP NOT NULL;
+ALTER TABLE orders_products ALTER COLUMN id_product DROP NOT NULL;
+ALTER TABLE orders_products ALTER COLUMN quantity DROP NOT NULL;
+
+CALL generate_data();
+
+ANALYZE;
+
+ALTER TABLE brands ADD CONSTRAINT unique_name UNIQUE (name);
+ALTER TABLE brands ALTER COLUMN name SET NOT NULL;
+
+ALTER TABLE products ADD CONSTRAINT positive_price CHECK (price > 0);
+ALTER TABLE products ADD CONSTRAINT positive_weight CHECK (weight > 0);
+ALTER TABLE products ADD FOREIGN KEY (brand) REFERENCES brands;
+ALTER TABLE products ALTER COLUMN name SET NOT NULL;
+ALTER TABLE products ALTER COLUMN brand SET NOT NULL;
+ALTER TABLE products ALTER COLUMN price SET NOT NULL;
+ALTER TABLE products ALTER COLUMN weight SET NOT NULL;
+
+ALTER TABLE customers ADD CONSTRAINT unique_phone_number UNIQUE (phone_number);
+ALTER TABLE customers ALTER COLUMN name SET NOT NULL;
+ALTER TABLE customers ALTER COLUMN phone_number SET NOT NULL;
+ALTER TABLE customers ALTER COLUMN password SET NOT NULL;
+
+ALTER TABLE points_of_issue ADD CONSTRAINT unique_address UNIQUE (address);
+ALTER TABLE points_of_issue ALTER COLUMN address SET NOT NULL;
+
+ALTER TABLE orders ADD FOREIGN KEY (customer) REFERENCES customers;
+ALTER TABLE orders ADD FOREIGN KEY (point_of_issue) REFERENCES points_of_issue;
+ALTER TABLE orders ALTER COLUMN customer SET NOT NULL;
+ALTER TABLE orders ALTER COLUMN date_of_placing SET NOT NULL;
+ALTER TABLE orders ALTER COLUMN status SET NOT NULL;
+ALTER TABLE orders ALTER COLUMN point_of_issue SET NOT NULL;
+
+ALTER TABLE orders_products ADD FOREIGN KEY (id_order) REFERENCES orders;
+ALTER TABLE orders_products ADD FOREIGN KEY (id_product) REFERENCES products;
+ALTER TABLE orders_products ADD CONSTRAINT positive_quantity CHECK (quantity > 0);
+ALTER TABLE orders_products ALTER COLUMN id_order SET NOT NULL;
+ALTER TABLE orders_products ALTER COLUMN id_product SET NOT NULL;
+ALTER TABLE orders_products ALTER COLUMN quantity SET NOT NULL;

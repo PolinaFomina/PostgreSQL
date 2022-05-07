@@ -1,0 +1,169 @@
+--SELECT
+
+--1
+--Вывести все заказы, в которых больше 3 различных лекарств
+SELECT date, name, COUNT(orders_medicaments.id_medicament) AS count FROM orders
+	JOIN customers ON orders.customer = customers.id_customer
+		JOIN orders_medicaments ON orders.id_order = orders_medicaments.id_order
+			GROUP BY date, name, orders.id_order
+				HAVING COUNT(orders_medicaments.id_medicament) > 3;
+				
+--2
+--Вывести всех заказчиков, название которых начинается на букву 'А' и количестов их заказов
+SELECT name, COUNT(id_order) AS count FROM customers
+	LEFT JOIN orders ON  customers.id_customer = orders.customer
+		WHERE name LIKE 'А%'
+			GROUP BY name;
+		
+--3
+--Вывести все заказы, сделанные до 18 февраля 2022 года, в которые входило самое дорогое лекарство и отсортировать их по дате
+SELECT orders.id_order, date, customers.name FROM orders
+	JOIN customers ON orders.customer = customers.id_customer
+		JOIN orders_medicaments ON orders.id_order = orders_medicaments.id_order
+			JOIN medicaments ON orders_medicaments.id_medicament = medicaments.id_medicament
+				WHERE medicaments.price = (SELECT MAX(price) FROM medicaments) AND date < '2022-02-18'
+					ORDER BY date DESC;
+
+--4
+--Вывести заказчиков, у которых наименьшее и наибольшее количество заказов и отсортировать их по убыванию
+WITH count_of_orders AS (SELECT COUNT(id_order) FROM customers
+							LEFT JOIN orders ON  customers.id_customer = orders.customer
+								GROUP BY name)
+								
+SELECT name, COUNT(id_order) AS count FROM customers
+	LEFT JOIN orders ON  customers.id_customer = orders.customer
+		GROUP BY name
+			HAVING COUNT(id_order) = (SELECT MAX(count) FROM count_of_orders)
+				OR COUNT(id_order) = (SELECT MIN(count) FROM count_of_orders)
+					ORDER BY count DESC;
+					
+					
+--5
+--Вывести все медикаменты, их формы выпуска, цену и среднюю цену для каждой формы выпуска
+SELECT medicaments.name, dosage_forms.name, price, AVG(price) OVER (PARTITION BY dosage_forms.name) FROM medicaments
+	JOIN dosage_forms ON medicaments.dosage_form = dosage_forms.id_dosage_form
+		GROUP BY medicaments.name, dosage_forms.name, price
+	
+	
+--UPDATE
+
+--1
+--Увеличить стоимость медикаментов, которые стоят дороже 300 рублей и медикамента, который чаще всего 
+--заказывают на 10%
+WITH count_of_medicaments_in_orders AS (SELECT COUNT(id_medicament) AS count FROM orders_medicaments
+											GROUP BY id_medicament)
+											
+UPDATE medicaments
+	SET price = price * 1.1
+		WHERE price > 300 OR id_medicament = (SELECT medicaments.id_medicament FROM medicaments
+											 	JOIN orders_medicaments ON medicaments.id_medicament = orders_medicaments.id_medicament
+											  		GROUP BY medicaments.id_medicament
+											  			HAVING COUNT(medicaments.id_medicament) = 
+											  				(SELECT MAX(count) FROM count_of_medicaments_in_orders));
+											 
+--2
+--Уменьшить стоимость самого дорогого лекарства на 20%
+UPDATE medicaments
+	SET price = price * 0.8
+		WHERE price = (SELECT MAX(price) FROM medicaments);
+		
+--3
+--Увеличить количество упаковок лекарства "Авиамарин" в 2 раза в заказе от 14 февраля 2022 года для заказчика "Аптека Шексна"
+UPDATE orders_medicaments
+	SET quantity = quantity * 2
+		WHERE id_order = (SELECT id_order FROM orders
+						 	WHERE date = '2022-02-14' AND customer = (SELECT id_customer FROM customers
+																	 	WHERE name = 'Аптека Шексна'))
+			AND id_medicament = (SELECT id_medicament FROM medicaments
+									WHERE name = 'Авиамарин');
+	
+	
+--DELETE
+
+--1
+--Удалить все заказы, сделанные заказчиком "Аптека Домашняя" 11 февраля 2022 года
+DELETE FROM orders
+	WHERE id_order = (SELECT id_order FROM orders
+					  	JOIN customers ON orders.customer = customers.id_customer
+					 		WHERE date = '2022-02-11' AND name = 'Аптека Домашняя');
+							
+--2
+--Удалить все медикаменты, которые ни разу не были заказаны
+DELETE FROM medicaments
+	WHERE id_medicament IN (SELECT medicaments.id_medicament FROM medicaments
+						   	EXCEPT
+						   	SELECT medicaments.id_medicament FROM medicaments
+						   		JOIN orders_medicaments ON medicaments.id_medicament = orders_medicaments.id_medicament);
+
+--3
+--Удалить те формы выпуска лекарств, в которых ни одно лекарство не было продано
+DELETE FROM dosage_forms
+	WHERE id_dosage_form IN (SELECT id_dosage_form FROM dosage_forms
+								LEFT JOIN medicaments ON dosage_forms.id_dosage_form = medicaments.dosage_form
+									LEFT JOIN orders_medicaments ON medicaments.id_medicament = orders_medicaments.id_medicament
+										GROUP BY id_dosage_form
+											HAVING COUNT(medicaments.id_medicament) = 0);
+											  
+
+--INSERT
+
+--1										  
+--Вставить новый заказ для компании 'Аптека Озерки', состоящий из следующих медикаментов:
+--вольтарен 10 штук и но-шпа 15 штук											  											  
+WITH insert_into_orders AS
+(
+  INSERT INTO orders (date, customer) VALUES
+  	(
+		(SELECT CURRENT_DATE),
+	 	(SELECT id_customer FROM customers
+			WHERE name = 'Аптека Озерки')
+	)
+  RETURNING id_order
+)
+
+INSERT INTO orders_medicaments (id_order, id_medicament, quantity) VALUES
+	(
+		(SELECT id_order FROM insert_into_orders),
+		(SELECT id_medicament FROM medicaments
+			WHERE name = 'Вольтарен'),
+		10
+	),
+	(
+		(SELECT id_order FROM insert_into_orders),
+				(SELECT id_medicament FROM medicaments
+			WHERE name = 'Но-шпа'),
+		15
+	);
+										  
+--2
+--Для медикамента 'Нурофен' добавить новые формы выпуска: таблетки и сироп и установить для них цену 300 рублей
+INSERT INTO medicaments (name, dosage_form, price) VALUES
+	(
+		'Нурофен',
+		(SELECT id_dosage_form FROM dosage_forms
+			WHERE name = 'Таблетки'),
+		300
+	),
+	(
+		'Нурофен',
+		(SELECT id_dosage_form FROM dosage_forms
+			WHERE name = 'Сироп'),
+		300
+	);
+
+--3
+--Добавить новое лекарство - таблетки 'Терафлекс', цена 1500 рублей
+INSERT INTO medicaments (name, dosage_form, price) VALUES
+	(
+		'Терафлекс1',
+		(SELECT id_dosage_form FROM dosage_forms
+			WHERE name = 'Таблетки'),
+		1500
+	);
+
+
+--Оконная функция
+--Вывести все лекарства, их формы выпуска, цену и среднюю цену для всех лекарств с этой формой выпуска
+SELECT dosage_forms.name AS "dosage form", medicaments.name, price,
+	avg(price) OVER (PARTITION BY dosage_forms.name) AS "average price" FROM dosage_forms 
+  		JOIN medicaments ON dosage_forms.id_dosage_form = medicaments.dosage_form;

@@ -1,0 +1,40 @@
+--1
+--Вывести среднюю цену для медикаментов разных форм выпуска и отсортировать по убыванию
+CREATE VIEW average_price_of_medicaments AS
+    SELECT dosage_forms.name, AVG(price) AS "average price" FROM dosage_forms
+		JOIN medicaments ON dosage_forms.id_dosage_form = medicaments.dosage_form
+			GROUP BY dosage_forms.name
+				ORDER BY "average price" DESC;
+				
+SELECT * FROM average_price_of_medicaments;
+	
+--2
+--Вывести в каком количестве купили каждый медикамент, информацию о каждом медикаменте и отсортировать 
+--в порядке убывания купленных упаковок
+CREATE VIEW statistic_of_medicaments AS
+	SELECT medicaments.name, SUM(quantity) as count, dosage_forms.name AS "dosage form", price FROM medicaments
+		JOIN orders_medicaments ON medicaments.id_medicament = orders_medicaments.id_medicament
+			JOIN dosage_forms ON medicaments.dosage_form = dosage_forms.id_dosage_form
+				GROUP BY medicaments.name, orders_medicaments.id_medicament, dosage_forms.name, price
+					ORDER BY count DESC;
+
+SELECT * FROM statistic_of_medicaments;
+	
+--3
+--Вывести всех заказчиков и номера телефонов для связи
+CREATE VIEW info_about_customers AS
+    SELECT customers.name, phone_number FROM customers;
+
+SELECT * FROM info_about_customers;
+
+--4
+--Вывести всех заказчиков и сумму, на которую они закупили медикаментов и отсортировать в порядке убывания
+CREATE VIEW statistic_of_customers AS
+    SELECT customers.name, SUM(price * quantity) as price FROM customers
+		JOIN orders ON customers.id_customer = orders.customer
+			JOIN orders_medicaments ON orders.id_order = orders_medicaments.id_order
+				JOIN medicaments ON orders_medicaments.id_medicament = medicaments.id_medicament
+					GROUP BY customers.name
+						ORDER BY price DESC;
+						
+SELECT * FROM statistic_of_customers;

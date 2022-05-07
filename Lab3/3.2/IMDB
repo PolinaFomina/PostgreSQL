@@ -1,0 +1,88 @@
+-- DROP TABLE IF EXISTS imdbdata CASCADE;
+
+-- CREATE TABLE imdbdata 
+-- (
+-- 	data JSONB
+-- );
+
+--Запросы
+
+--Вывести всех актёров, у которых в имени присутсвтует 'Alex'
+SELECT data FROM imdbdata 
+	WHERE data->>'primaryName' LIKE '% Alex %'
+
+--Вывести актёров у которых больше 50 ролей в фильмах и сериалах
+SELECT data->>'primaryName' AS "name", jsonb_array_length(data->'roles') AS "count of roles" FROM imdbdata 
+	WHERE jsonb_array_length(data->'roles') > 150
+
+--Вывести данные, у которых размер json максимальный
+SELECT pg_column_size(data)/1024 AS "size in KB", data FROM imdbdata 
+		WHERE pg_column_size(data) = (SELECT MAX(pg_column_size(data)) FROM imdbdata)
+
+--Вывести данные, у которых размер json минимальный
+SELECT pg_column_size(data)/1024 AS "size in KB", data FROM imdbdata 
+		WHERE pg_column_size(data) = (SELECT MIN(pg_column_size(data)) FROM imdbdata ) --в байтах
+		
+--Вывести данные, у которых размер json равен заданному значению
+SELECT pg_column_size(data)/1024 AS "size in KB", data FROM imdbdata 
+		WHERE pg_column_size(data)/1024 = 0 --в байтах
+		
+--Вывести данные в порядке убывания размера json
+SELECT data->>'id' AS "id", pg_column_size(data)/1024 AS "size in KB", data FROM imdbdata 
+		ORDER BY pg_column_size(data) DESC
+
+--Вывести данные, у которых размер json больше 2КБ
+SELECT data, pg_column_size(data)/1024 AS "size in KB" FROM imdbdata 
+	WHERE pg_column_size(data)/1024 > 2
+
+
+--Запросы для построения графика
+EXPLAIN (ANALYZE, Timing) SELECT * FROM imdbdata 
+		WHERE data->>'id' = '128432'
+
+SELECT pg_column_size(data)/1024 AS "size" FROM imdbdata 
+		WHERE data->>'id' = '128432'
+		
+		
+--Получить объем БД
+SELECT pg_database_size('IMDB') --487641647
+
+--Получить текущую запись в журнале WAL
+SELECT pg_current_wal_lsn()::pg_lsn --'C/E8332770'
+
+--Изменить имя актёра с указанным индексом
+UPDATE imdbdata
+	SET data = data || '{"primaryName":"Chris Tenner"}'::jsonb
+		WHERE data->>'id' = '1';
+		
+SELECT * FROM imdbdata 
+		WHERE data->>'id' = '1'	
+		
+--Получить объем БД
+SELECT pg_database_size('IMDB') --487641647
+
+--Получить текущую запись в журнале WAL
+SELECT pg_current_wal_lsn()::pg_lsn --'C/E8332890'
+
+--На сколько изменился объем базы данных в KB
+SELECT (487641647-487641647)/1024
+
+--На сколько изменился объем журнала WAL в байтах
+SELECT * FROM pg_wal_lsn_diff('C/E8332890'::pg_lsn, 'C/E8332770'::pg_lsn);
+
+--Изменить имя актёра с указанным индексом
+UPDATE imdbdata
+	SET data = data || '{"primaryName":"Chris Renner"}'::jsonb
+		WHERE data->>'id' = '128432';
+		
+--Получить объем БД
+SELECT pg_database_size('IMDB') --487780911
+
+--Получить текущую запись в журнале WAL
+SELECT pg_current_wal_lsn()::pg_lsn --'C/E837CBE0'
+
+--На сколько изменился объем базы данных в KB
+SELECT (487780911-487641647)/1024
+
+--На сколько изменился объем журнала WAL в байтах
+SELECT * FROM pg_wal_lsn_diff('C/E837CBE0'::pg_lsn, 'C/E8332890'::pg_lsn);

@@ -1,0 +1,102 @@
+--READ UNCOMMITTED
+
+--потерянные изменения
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+BEGIN;
+
+UPDATE medicaments
+	SET price = price + 100
+		WHERE id_medicament = 14;
+		
+COMMIT;
+
+--грязное чтение
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+BEGIN;
+
+UPDATE medicaments
+	SET price = price + 100
+		WHERE id_medicament = 14;
+	
+ROLLBACK;
+
+COMMIT;
+
+
+--READ COMMITTED
+
+--грязное чтение
+
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+BEGIN;
+
+UPDATE medicaments
+	SET price = price + 100
+		WHERE id_medicament = 14;
+	
+ROLLBACK;
+
+COMMIT;
+
+--неповторяемое чтение
+
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+BEGIN;
+
+UPDATE medicaments
+	SET price = price + 100
+		WHERE id_medicament = 14;
+	
+COMMIT;
+
+
+--REPEATABLE READ
+
+--неповторяемое чтение
+
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+BEGIN;
+
+UPDATE medicaments
+	SET price = price + 100
+		WHERE id_medicament = 14;
+	
+COMMIT;
+
+--фантомное чтение
+
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+BEGIN;
+
+DELETE FROM orders
+	WHERE id_order = 3;
+	
+COMMIT;
+
+
+--SERIALIZABLE
+
+--фантомное чтение
+
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+BEGIN;
+
+DELETE FROM orders
+	WHERE id_order = 7;
+	
+COMMIT;
+
+
+--READ COMMITTED
+
+--фантомное чтение
+
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+BEGIN;
+
+DELETE FROM orders
+	WHERE id_order = 12;
+	
+COMMIT;
